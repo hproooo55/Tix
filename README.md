@@ -4,3 +4,8 @@ A networked terminal application that allows two players to compete in real time
 
 
 - The project consists of a client-server architecture, where a server performs room creations, move validations, player connections/disconnections and game state, while the client manages the interface for players while communicating with the server.
+
+
+## Features
+- Ability to create locked/unlocked Games
+- Join locked games via invite code
