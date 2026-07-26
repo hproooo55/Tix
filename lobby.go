@@ -43,8 +43,8 @@ var winLines = [8][3]int{
 
 // define lobby structure
 type Lobby struct {
-	mu   sync.Mutex
-	turn *Player
+	mu    sync.Mutex
+	games []*Game
 }
 
 type Player struct {
