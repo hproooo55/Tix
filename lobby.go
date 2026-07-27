@@ -65,13 +65,11 @@ type Game struct {
 
 func (l *Lobby) getPlayerByAddr(addr string) *Player {
 	l.mu.Lock()
+	defer l.mu.Unlock()
 	for i := range len(l.players) {
 		if l.players[i].remoteAddr == addr {
 			return l.players[i]
 		}
 	}
-	l.mu.Unlock()
-	return &Player{
-		remoteAddr: addr,
-	}
+	return nil
 }

@@ -68,23 +68,26 @@ func teaHandler(s ssh.Session, l *Lobby) (tea.Model, []tea.ProgramOption) {
 	addr := strings.Split(s.RemoteAddr().String(), ":")[0]
 
 	player := l.getPlayerByAddr(addr)
-	if player != nil {
+	if player == nil {
+		player = &Player{
+			remoteAddr: addr,
+		}
 		l.players = append(l.players, player)
 	}
+
 	log.Info(player.remoteAddr)
 	log.Info(addr)
+
 	ti := textinput.New()
 	ti.Focus()
 	ti.CharLimit = 156
 	ti.Width = 20
 
 	m := model{
-		term:   pty.Term,
-		width:  pty.Window.Width,
-		height: pty.Window.Height,
-		player: &Player{
-			remoteAddr: addr,
-		},
+		term:      pty.Term,
+		width:     pty.Window.Width,
+		height:    pty.Window.Height,
+		player:    player,
 		nameInput: ti,
 		players:   l.players,
 		txtStyle:  lipgloss.NewStyle().Foreground(lipgloss.Color("10")),
