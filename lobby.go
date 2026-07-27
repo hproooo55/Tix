@@ -41,16 +41,18 @@ var winLines = [8][3]int{
 	{0, 4, 8}, {2, 4, 6},
 }
 
-// define lobby structure
+// Shared app state between multiple players
 type Lobby struct {
-	mu    sync.Mutex
-	games []*Game
+	mu      sync.Mutex
+	games   []*Game
+	players []*Player
 }
 
 type Player struct {
 	game        *Game
 	mark        Mark
 	displayName string
+	remoteAddr  string
 }
 
 type Game struct {
@@ -59,4 +61,17 @@ type Game struct {
 	Board [9]Mark
 	turn  Mark
 	X, O  *Player
+}
+
+func (l *Lobby) getPlayerByAddr(addr string) *Player {
+	l.mu.Lock()
+	for i := range len(l.players) {
+		if l.players[i].remoteAddr == addr {
+			return l.players[i]
+		}
+	}
+	l.mu.Unlock()
+	return &Player{
+		remoteAddr: addr,
+	}
 }
