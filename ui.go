@@ -1,20 +1,39 @@
 package main
 
 import (
-	"charm.land/lipgloss/v2"
+	// "charm.land/bubbles/v2/table"
+	"github.com/charmbracelet/lipgloss"
 )
 
 var (
-	headStyle = lipgloss.NewStyle().
-		MarginLeft(50).
-		MarginRight(50).
-		PaddingLeft(1).
-		PaddingRight(1)
+	headStyle = lipgloss.NewStyle()
 )
 
 func (m model) View() string {
-	colors := lipgloss.Blend1D(15, lipgloss.Color("#b5e3ff"), lipgloss.Color("#0167ff"), lipgloss.Color("#b5e3ff"))
-	m.headStyle = headStyle.Align(lipgloss.Center).Foreground(colors[m.colorIndex])
+	m.headStyle = headStyle.Align(lipgloss.Center).Foreground(lipgloss.Color("#46B1C9")).Width(m.width)
+	// menuStyles := []lipgloss.Style{
+	// 	lipgloss.NewStyle().Foreground(lipgloss.Color("#4A6FA5")),
+	// }
+	menuItems := []string{
+		"Create Game",
+		"List Games",
+		"Join Game By Code",
+	}
+
+	var ms string
+	var mo string
+	prefix := lipgloss.NewStyle().Foreground(lipgloss.Color("#A0DDFF")).Render("> ")
+	if m.player.displayName != "" {
+		for i, mi := range menuItems {
+			if i == m.menuChoice {
+				ms = ms + lipgloss.NewStyle().Align(lipgloss.Left).Render(prefix+mi) + "\n"
+			} else {
+				ms = ms + lipgloss.NewStyle().Align(lipgloss.Left).Foreground(lipgloss.Color("#4A6FA5")).Render(mi) + "\n"
+			}
+			mo = mo + lipgloss.PlaceHorizontal(m.width, lipgloss.Center, ms)
+		}
+	}
+
 	ascii := `
 __/\\\\\\\\\\\\\\\__/\\\\\\\\\\\__/\\\_______/\\\_        
  _\///////\\\/////__\/////\\\///__\///\\\___/\\\/__       
@@ -27,16 +46,29 @@ __/\\\\\\\\\\\\\\\__/\\\\\\\\\\\__/\\\_______/\\\_
         _______\///________\///////////__\///_______\///__ 
 	`
 	var ps string
-	for _, p := range m.players {
+	for _, p := range m.lobby.players {
 		ps = ps + p.displayName + "\n"
 	}
 	var wm string
-	if m.player.displayName != "" {
-		wm = "WELCOME! " + m.player.displayName + "\n\n"
-	} else {
-		wm = m.nameInput.View()
+	var s string
+	switch m.view {
+	case titleView:
+		if m.player.displayName != "" && m.view == titleView {
+			wm = "WELCOME! " + m.player.displayName
+		} else {
+			wm = m.nameInput.View()
+		}
+		s = ascii + "\n\n" + wm + "\n\n" + ms
+		s = m.headStyle.Render(s)
+	case LobbyView:
+		s = m.table.View()
+		m.headStyle = headStyle.Foreground(lipgloss.Color("#46B1C9")).Width(m.table.Width()).Border(lipgloss.NormalBorder())
+
+		tbs := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, m.headStyle.Render(s))
+		s = tbs
+
 	}
-	s := ascii + "\n\n" + "Your addr - " + m.player.remoteAddr + ps + "\n\n" + wm + "\n\n"
-	v := m.headStyle.Render(s)
+
+	v := s
 	return v
 }

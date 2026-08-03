@@ -1,7 +1,12 @@
 package main
 
 import (
+	"errors"
+	"log"
+	"slices"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 type Mark byte
@@ -56,8 +61,9 @@ type Player struct {
 }
 
 type Game struct {
-	ID    string
-	seq   int64
+	ID     string
+	locked bool
+	// seq   int64
 	Board [9]Mark
 	turn  Mark
 	X, O  *Player
@@ -72,4 +78,51 @@ func (l *Lobby) getPlayerByAddr(addr string) *Player {
 		}
 	}
 	return nil
+}
+
+func (l *Lobby) createGame(p *Player) (*Game, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, e := range l.games {
+		if e.X == p || e.O == p {
+			// delete game directly inside createGame to avoid mutex handling.
+			for i := range l.games {
+				if l.games[i] == e {
+					// Do not allow a user to create more than 1 game.
+					l.games = slices.Delete(l.games, i, i+1)
+					log.Println(i)
+				}
+			}
+		}
+	}
+	id := uuid.New()
+	g := Game{
+		ID:    id.String(),
+		Board: [9]Mark{},
+		turn:  Xmark,
+		X:     p,
+	}
+	l.games = append(l.games, &g)
+	p.mark = Xmark
+	return &g, nil
+}
+
+// func (l *Lobby) updateGameState(p *Player) (*Game, error) {
+
+// }
+
+func (l *Lobby) deleteGame(g *Game) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	for i := range l.games {
+		if l.games[i] == g {
+			l.games = slices.Delete(l.games, i, i+1)
+			log.Println(i)
+			log.Println("Delted")
+			return nil
+		}
+	}
+
+	return errors.New("GAME NOT FOUND")
 }

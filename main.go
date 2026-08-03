@@ -6,14 +6,17 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
-	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/wish/bubbletea"
+	wishbubbletea "github.com/charmbracelet/wish/bubbletea"
 
 	"github.com/charmbracelet/log"
 	"github.com/charmbracelet/ssh"
@@ -23,7 +26,7 @@ import (
 )
 
 const (
-	host = "0.0.0.0"
+	host = "127.0.0.1"
 	port = "22"
 )
 
@@ -36,7 +39,7 @@ func main() {
 		wish.WithAddress(net.JoinHostPort(host, port)),
 		wish.WithHostKeyPath(".ssh/id_ed25519"),
 		wish.WithMiddleware(
-			bubbletea.Middleware(func(s ssh.Session) (tea.Model, []tea.ProgramOption) { return teaHandler(s, &l) }),
+			wishbubbletea.Middleware(func(s ssh.Session) (tea.Model, []tea.ProgramOption) { return teaHandler(s, &l) }),
 			activeterm.Middleware(),
 			logging.Middleware(),
 		),
@@ -63,6 +66,16 @@ func main() {
 	}
 
 }
+
+type Disconnected struct{}
+
+// func listenDisconnect(ctx ) tea.Cmd {
+// 	return func() tea.Msg{
+// 		c
+// 		return Disconnected
+// 	}
+// }
+
 func teaHandler(s ssh.Session, l *Lobby) (tea.Model, []tea.ProgramOption) {
 	pty, _, _ := s.Pty()
 	addr := strings.Split(s.RemoteAddr().String(), ":")[0]
@@ -78,28 +91,90 @@ func teaHandler(s ssh.Session, l *Lobby) (tea.Model, []tea.ProgramOption) {
 	log.Info(player.remoteAddr)
 	log.Info(addr)
 
+	// directly proportional to length of games + 10 extra room
+	h := pty.Window.Height * (len(l.games)*5 + 10) / 100
+	log.Info(h)
+
+	width := pty.Window.Width * 30 / 100
+	height := h
+
+	tb := table.New(
+		table.WithFocused(true),
+		table.WithHeight(height),
+		table.WithWidth(width),
+	)
+
+	tb.SetColumns([]table.Column{
+		{
+			Title: "Index",
+			Width: width * 25 / 100,
+		},
+		{
+			Title: "Player",
+			Width: width * 50 / 100,
+		},
+		{
+			Title: "Locked",
+			Width: width * 15 / 100,
+		},
+	})
+	ts := table.DefaultStyles()
+
+	ts.Header = ts.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderBottom(true).
+		BorderForeground(lipgloss.Color("#46B1C9")).
+		Bold(true).
+		Foreground(lipgloss.Color("#fff"))
+
+	ts.Selected = ts.Selected.Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false).
+		Width(width)
+	tb.SetStyles(ts)
+
 	ti := textinput.New()
+	ti.Placeholder = "Enter your display name here"
 	ti.Focus()
 	ti.CharLimit = 156
-	ti.Width = 20
+	ti.Width = 30
 
 	m := model{
-		term:      pty.Term,
-		width:     pty.Window.Width,
-		height:    pty.Window.Height,
-		player:    player,
-		nameInput: ti,
-		players:   l.players,
-		txtStyle:  lipgloss.NewStyle().Foreground(lipgloss.Color("10")),
-		quitStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("8")),
-		bg:        "light",
+		term:       pty.Term,
+		width:      pty.Window.Width,
+		height:     pty.Window.Height,
+		player:     player,
+		ctx:        s.Context(),
+		lobby:      l,
+		nameInput:  ti,
+		listChoice: 0,
+		menuChoice: 0,
+		table:      tb,
+		txtStyle:   lipgloss.NewStyle().Foreground(lipgloss.Color("10")),
+		quitStyle:  lipgloss.NewStyle().Foreground(lipgloss.Color("8")),
 	}
+
+	go func() {
+		<-s.Context().Done()
+		l.mu.Lock()
+		defer l.mu.Unlock()
+		// delete game if any
+		if m.player.game != nil {
+			l.deleteGame(m.player.game)
+		}
+		log.Info("Client disconnected")
+
+	}()
+
 	return m, []tea.ProgramOption{}
 }
 
 const (
 	titleView uint = iota
 	LobbyView
+	// we dont need createview rn bcz there isnt any input and not necessary to show a view
+	// CreateView
+	JoinView
 	GameView
 )
 
@@ -109,11 +184,14 @@ type model struct {
 	width      int
 	height     int
 	player     *Player
-	players    []*Player
-	bg         string
+	menuChoice int
+	lobby      *Lobby
+	ctx        context.Context
 	view       uint
+	listChoice int
 	txtStyle   lipgloss.Style
 	quitStyle  lipgloss.Style
+	table      table.Model
 	headStyle  lipgloss.Style
 	nameInput  textinput.Model
 	colorIndex int
@@ -121,7 +199,6 @@ type model struct {
 
 func (m model) Init() tea.Cmd {
 	return tick()
-
 }
 
 type tickMsg time.Time
@@ -131,8 +208,26 @@ func tick() tea.Cmd {
 		return tickMsg(t)
 	})
 }
+func getRows(l *Lobby) []table.Row {
+	tr := []table.Row{}
+	for i, g := range l.games {
+		var locked string
+		if g.locked {
+			locked = "🔒"
+		} else {
+			locked = "🔓"
+		}
+		tr = append(tr, table.Row{
+			strconv.Itoa(i),
+			g.X.displayName,
+			locked,
+		})
+	}
+	return tr
+}
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+
 	switch msg := msg.(type) {
 	case tickMsg:
 		m.colorIndex = (m.colorIndex + 1) % 15
@@ -142,10 +237,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 	case tea.KeyMsg:
 		switch msg.String() {
+
+		case "up", "w":
+			if m.menuChoice < 0 {
+				m.menuChoice = 2
+			} else {
+				m.menuChoice--
+			}
+
+		case "down", "s":
+			if m.menuChoice > 2 {
+				m.menuChoice = 0
+			} else {
+				m.menuChoice++
+			}
+
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "enter":
-			m.player.displayName = m.nameInput.Value()
+			if m.view == titleView && m.player.displayName != "" {
+				switch m.menuChoice {
+				case 0:
+					m.lobby.createGame(m.player)
+				case 1:
+					m.view = LobbyView
+				case 2:
+					m.view = JoinView
+				}
+			} else if m.view == titleView && m.player.displayName == "" {
+				m.player.displayName = m.nameInput.Value()
+			} else if m.view == GameView {
+
+			}
 		}
 		switch m.view {
 		case titleView:
@@ -154,8 +277,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.nameInput, cmd = m.nameInput.Update(msg)
 				return m, cmd
 			}
-		}
+		case LobbyView:
+			var cmd tea.Cmd
+			m.table, cmd = m.table.Update(msg)
+			m.table.SetRows(getRows(m.lobby))
+			return m, cmd
 
+		case GameView:
+
+		}
 	}
 	return m, nil
 }
