@@ -1,12 +1,16 @@
 package main
 
 import (
-	// "charm.land/bubbles/v2/table"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var (
-	headStyle = lipgloss.NewStyle()
+	headStyle         = lipgloss.NewStyle()
+	selectedCellStyle = lipgloss.NewStyle()
+	CellStyle         = lipgloss.NewStyle()
+	hor               = lipgloss.NewStyle()
+	rows              = 3
+	col               = 3
 )
 
 func (m model) View() string {
@@ -66,7 +70,18 @@ __/\\\\\\\\\\\\\\\__/\\\\\\\\\\\__/\\\_______/\\\_
 
 		tbs := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, m.headStyle.Render(s))
 		s = tbs
-
+	case GameView:
+		var str string = ""
+		var vert string
+		for i := range col {
+			vert = ""
+			for j := 0; j < 3; j++ {
+				c := CellStyle.Height(5).Width(10).Border(lipgloss.BlockBorder(), true, true, true, true).Render(string(m.player.game.Board[i*3+j]))
+				vert = lipgloss.JoinHorizontal(lipgloss.Center, vert, c)
+			}
+			str = lipgloss.JoinVertical(lipgloss.Center, str, vert)
+		}
+		s = lipgloss.PlaceHorizontal(m.width, lipgloss.Center, m.player.game.X.displayName+"\t vs \t"+m.player.game.O.displayName+"\n\n"+str)
 	}
 
 	v := s

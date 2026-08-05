@@ -266,6 +266,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			} else if m.view == titleView && m.player.displayName == "" {
 				m.player.displayName = m.nameInput.Value()
+			} else if m.view == LobbyView {
+				var gameToJoin *Game
+				for _, game := range m.lobby.games {
+					if m.table.SelectedRow()[1] == game.X.displayName {
+						gameToJoin = game
+					}
+				}
+				p, err := m.lobby.joinGame(m.player, gameToJoin)
+				m.player = p
+				if err == nil {
+					m.view = GameView
+				}
 			} else if m.view == GameView {
 
 			}

@@ -54,10 +54,11 @@ type Lobby struct {
 }
 
 type Player struct {
-	game        *Game
-	mark        Mark
-	displayName string
-	remoteAddr  string
+	game         *Game
+	mark         Mark
+	displayName  string
+	remoteAddr   string
+	selectedCell int
 }
 
 type Game struct {
@@ -90,7 +91,6 @@ func (l *Lobby) createGame(p *Player) (*Game, error) {
 				if l.games[i] == e {
 					// Do not allow a user to create more than 1 game.
 					l.games = slices.Delete(l.games, i, i+1)
-					log.Println(i)
 				}
 			}
 		}
@@ -102,6 +102,7 @@ func (l *Lobby) createGame(p *Player) (*Game, error) {
 		turn:  Xmark,
 		X:     p,
 	}
+	p.game = &g
 	l.games = append(l.games, &g)
 	p.mark = Xmark
 	return &g, nil
@@ -126,3 +127,17 @@ func (l *Lobby) deleteGame(g *Game) error {
 
 	return errors.New("GAME NOT FOUND")
 }
+
+func (l *Lobby) joinGame(p *Player, g *Game) (*Player, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	g.O = p
+	p.game = g
+	p.mark = Omark
+	p.selectedCell = 0
+	return p, nil
+}
+
+// func (g *Game) makeMove(p *Player) {
+
+// }
