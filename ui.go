@@ -76,12 +76,28 @@ __/\\\\\\\\\\\\\\\__/\\\\\\\\\\\__/\\\_______/\\\_
 		for i := range col {
 			vert = ""
 			for j := 0; j < 3; j++ {
-				c := CellStyle.Height(5).Width(10).Border(lipgloss.BlockBorder(), true, true, true, true).Render(string(m.player.game.Board[i*3+j]))
+				var c string
+				idx := i*3 + j
+				if m.player.selectedCell == idx {
+					c = CellStyle.Height(5).Width(10).Border(lipgloss.BlockBorder(), true, true, true, true).Background(lipgloss.Color("#46B1C9")).Align(lipgloss.Center).Padding(1).Render(string(m.player.game.Board[i*3+j]))
+
+				} else {
+					c = CellStyle.Height(5).Width(10).Border(lipgloss.BlockBorder(), true, true, true, true).Align(lipgloss.Center).Padding(1).Render(string(m.player.game.Board[i*3+j]))
+
+				}
 				vert = lipgloss.JoinHorizontal(lipgloss.Center, vert, c)
 			}
 			str = lipgloss.JoinVertical(lipgloss.Center, str, vert)
 		}
-		s = lipgloss.PlaceHorizontal(m.width, lipgloss.Center, m.player.game.X.displayName+"\t vs \t"+m.player.game.O.displayName+"\n\n"+str)
+
+		// handle O not existing, the same thing is impossible for X (the host)
+		var ODisplayName string
+		if m.player.game.O.displayName == "" {
+			ODisplayName = "Waiting for opponent..."
+		} else {
+			ODisplayName = m.player.displayName
+		}
+		s = lipgloss.PlaceHorizontal(m.width, lipgloss.Center, m.player.game.X.displayName+"\t vs \t"+ODisplayName+"\n\n"+str)
 	}
 
 	v := s

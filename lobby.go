@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"slices"
+	"sort"
 	"sync"
 
 	"github.com/google/uuid"
@@ -57,11 +58,13 @@ type Player struct {
 	game         *Game
 	mark         Mark
 	displayName  string
+	moves        []int
 	remoteAddr   string
 	selectedCell int
 }
 
 type Game struct {
+	mu     sync.Mutex
 	ID     string
 	locked bool
 	// seq   int64
@@ -81,7 +84,7 @@ func (l *Lobby) getPlayerByAddr(addr string) *Player {
 	return nil
 }
 
-func (l *Lobby) createGame(p *Player) (*Game, error) {
+func (l *Lobby) createGame(p *Player) (*Player, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	for _, e := range l.games {
@@ -101,11 +104,13 @@ func (l *Lobby) createGame(p *Player) (*Game, error) {
 		Board: [9]Mark{},
 		turn:  Xmark,
 		X:     p,
+		O:     &Player{},
 	}
 	p.game = &g
 	l.games = append(l.games, &g)
 	p.mark = Xmark
-	return &g, nil
+	p.selectedCell = 0
+	return p, nil
 }
 
 // func (l *Lobby) updateGameState(p *Player) (*Game, error) {
@@ -138,6 +143,22 @@ func (l *Lobby) joinGame(p *Player, g *Game) (*Player, error) {
 	return p, nil
 }
 
-// func (g *Game) makeMove(p *Player) {
+func (g *Game) makeMove(p *Player) {
+	mark := p.mark
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.turn == mark {
+		cell := p.selectedCell
+		g.Board[cell] = mark
+		g.turn = g.turn.opposite()
+		p.moves = append(p.moves, cell)
+		sort.Slice(p.moves, func(i, j int) bool {
+			return p.moves[i] < p.moves[j]
+		})
+	}
+}
 
+// func (g *Game) checkWin() bool {
+// 	var winner *Player
+// 	for i := range
 // }

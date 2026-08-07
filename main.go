@@ -258,7 +258,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.view == titleView && m.player.displayName != "" {
 				switch m.menuChoice {
 				case 0:
-					m.lobby.createGame(m.player)
+					p, err := m.lobby.createGame(m.player)
+					if err == nil {
+						m.player = p
+						m.view = GameView
+					}
 				case 1:
 					m.view = LobbyView
 				case 2:
@@ -296,7 +300,34 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 
 		case GameView:
-
+			switch msg.String() {
+			case "down":
+				if m.player.selectedCell > 6 {
+					m.player.selectedCell -= 9
+				} else {
+					m.player.selectedCell += 3
+				}
+			case "up":
+				if m.player.selectedCell < 0 {
+					m.player.selectedCell += 9
+				} else {
+					m.player.selectedCell -= 3
+				}
+			case "right":
+				if m.player.selectedCell > 8 {
+					m.player.selectedCell -= 9
+				} else {
+					m.player.selectedCell++
+				}
+			case "left":
+				if m.player.selectedCell < 0 {
+					m.player.selectedCell += 9
+				} else {
+					m.player.selectedCell--
+				}
+			case "enter":
+				m.player.game.makeMove(m.player)
+			}
 		}
 	}
 	return m, nil
