@@ -22,7 +22,6 @@ func (m model) View() string {
 	menuItems := []string{
 		"Create Game",
 		"List Games",
-		"Join Game By Code",
 	}
 
 	var ms string
