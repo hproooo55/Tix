@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -9,7 +11,6 @@ var (
 	selectedCellStyle = lipgloss.NewStyle()
 	CellStyle         = lipgloss.NewStyle()
 	hor               = lipgloss.NewStyle()
-	rows              = 3
 	col               = 3
 )
 
@@ -97,7 +98,11 @@ __/\\\\\\\\\\\\\\\__/\\\\\\\\\\\__/\\\_______/\\\_
 		} else {
 			ODisplayName = m.player.displayName
 		}
-		s = lipgloss.PlaceHorizontal(m.width, lipgloss.Center, m.player.game.X.displayName+"\t vs \t"+ODisplayName+"\n\n"+str)
+		var win string
+		if m.player.game.winner != nil {
+			win = fmt.Sprintf("the winner is %v", m.player.game.winner.displayName)
+		}
+		s = lipgloss.PlaceHorizontal(m.width, lipgloss.Center, m.player.game.X.displayName+"\t vs \t"+ODisplayName+"\n\n"+str+"\n\n"+win)
 	}
 
 	v := s

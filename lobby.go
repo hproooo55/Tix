@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log"
 	"slices"
-	"sort"
 	"sync"
 
 	"github.com/google/uuid"
@@ -41,7 +40,7 @@ const (
 	statusProgress Status = "in progress"
 )
 
-var winLines = [8][3]int{
+var winLines = [][]int{
 	{0, 1, 2}, {3, 4, 5}, {6, 7, 8},
 	{0, 3, 6}, {1, 4, 7}, {2, 5, 8},
 	{0, 4, 8}, {2, 4, 6},
@@ -58,7 +57,6 @@ type Player struct {
 	game         *Game
 	mark         Mark
 	displayName  string
-	moves        []int
 	remoteAddr   string
 	selectedCell int
 }
@@ -68,9 +66,10 @@ type Game struct {
 	ID     string
 	locked bool
 	// seq   int64
-	Board [9]Mark
-	turn  Mark
-	X, O  *Player
+	Board  [9]Mark
+	winner *Player
+	turn   Mark
+	X, O   *Player
 }
 
 func (l *Lobby) getPlayerByAddr(addr string) *Player {
@@ -151,14 +150,25 @@ func (g *Game) makeMove(p *Player) {
 		cell := p.selectedCell
 		g.Board[cell] = mark
 		g.turn = g.turn.opposite()
-		p.moves = append(p.moves, cell)
-		sort.Slice(p.moves, func(i, j int) bool {
-			return p.moves[i] < p.moves[j]
-		})
+		g.checkWin()
 	}
 }
 
-// func (g *Game) checkWin() bool {
-// 	var winner *Player
-// 	for i := range
-// }
+func (g *Game) checkWin() *Player {
+	for _, line := range winLines {
+		if g.Board[line[0]] != Empty &&
+			g.Board[line[0]] == g.Board[line[1]] &&
+			g.Board[line[1]] == g.Board[line[2]] {
+
+			if g.Board[line[0]] == Xmark {
+				g.winner = g.X
+			} else {
+				g.winner = g.O
+			}
+
+			return g.winner
+		}
+	}
+
+	return nil
+}

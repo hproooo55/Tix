@@ -113,10 +113,6 @@ func teaHandler(s ssh.Session, l *Lobby) (tea.Model, []tea.ProgramOption) {
 			Title: "Player",
 			Width: width * 50 / 100,
 		},
-		{
-			Title: "Locked",
-			Width: width * 15 / 100,
-		},
 	})
 	ts := table.DefaultStyles()
 
@@ -156,8 +152,6 @@ func teaHandler(s ssh.Session, l *Lobby) (tea.Model, []tea.ProgramOption) {
 
 	go func() {
 		<-s.Context().Done()
-		l.mu.Lock()
-		defer l.mu.Unlock()
 		// delete game if any
 		if m.player.game != nil {
 			l.deleteGame(m.player.game)
@@ -211,16 +205,9 @@ func tick() tea.Cmd {
 func getRows(l *Lobby) []table.Row {
 	tr := []table.Row{}
 	for i, g := range l.games {
-		var locked string
-		if g.locked {
-			locked = "🔒"
-		} else {
-			locked = "🔓"
-		}
 		tr = append(tr, table.Row{
 			strconv.Itoa(i),
 			g.X.displayName,
-			locked,
 		})
 	}
 	return tr
@@ -300,6 +287,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 
 		case GameView:
+			if m.player.game == nil {
+				log.Print("SETTING LObbY VIEW")
+				m.view = LobbyView
+			}
 			switch msg.String() {
 			case "down":
 				if m.player.selectedCell > 6 {
