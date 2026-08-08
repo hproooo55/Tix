@@ -7,5 +7,16 @@ A networked terminal application that allows two players to compete in real time
 
 
 ## Features
-- Ability to create locked/unlocked Games
-- Join locked games via invite code
+- Ability to create Games
+- Join games via game list
+
+# Installation
+
+You can either - 
+`git clone https://github.com/hproooo55/Tix` and
+`go run .` inside the directory
+
+OR
+
+`ssh tix.kartikeyx.tech`
+This is my little deployment
